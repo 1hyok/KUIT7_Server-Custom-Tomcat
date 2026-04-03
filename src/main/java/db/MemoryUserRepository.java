@@ -6,7 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MemoryUserRepository implements Repository{
+public class MemoryUserRepository implements Repository {
     private final Map<String, User> users = new HashMap<>();
     private static MemoryUserRepository memoryUserRepository;
 
@@ -27,6 +27,10 @@ public class MemoryUserRepository implements Repository{
 
     public User findUserById(String userId) {
         return users.get(userId);
+    }
+
+    public boolean isSignedUp(String userId) {
+        return findUserById(userId) != null;
     }
 
     public Collection<User> findAll() {

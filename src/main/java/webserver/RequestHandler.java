@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 
 public class RequestHandler implements Runnable {
     Socket connection;
+    private static final String INDEX = "/index.html";
     private static final Logger log = Logger.getLogger(RequestHandler.class.getName());
 
     public RequestHandler(Socket connection) {
@@ -29,12 +30,14 @@ public class RequestHandler implements Runnable {
 
             String requestLine = br.readLine();
             if (requestLine == null) return;
+            log.log(Level.INFO, () -> String.format("Request: %s", requestLine));
 
             String url = requestLine.split(" ")[1];
-            log.log(Level.INFO, () -> String.format("Request: %s", url));
 
             if (url.startsWith("/user/signup")) {
                 handleSignup(br, dos);
+            } else if (url.startsWith("/user/login")) {
+                handleLogin(br, dos);
             } else {
                 handleStaticFile(url, dos);
             }
@@ -43,9 +46,25 @@ public class RequestHandler implements Runnable {
         }
     }
 
+    private void handleLogin(BufferedReader br, DataOutputStream dos) throws IOException {
+        int contentLength = getContentLength(br, ": ");
+        String body = IOUtils.readData(br, contentLength);
+        log.log(Level.INFO, () -> String.format("Body: %s", body));
+
+        User user = getUser(body);
+        String userId = user.getUserId();
+        MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
+        boolean isSignedUp = memoryUserRepository.isSignedUp(userId);
+        if (isSignedUp) {
+            response302Header(dos, INDEX);
+            return;
+        }
+        response302Header(dos, "/logined_failed.html");
+    }
+
     private void handleStaticFile(String url, DataOutputStream dos) throws IOException {
         if (url.equals("/")) {
-            url = "/index.html";
+            url = INDEX;
         }
         byte[] body = Files.readAllBytes(Paths.get("./webapp" + url));
 
@@ -56,29 +75,44 @@ public class RequestHandler implements Runnable {
         if (url.endsWith(".png")) contentType = "image/png";
         if (url.endsWith(".jpeg")) contentType = "image/jpeg";
 
-        response200Header(dos, body.length, contentType);
+        response200Header(dos, body.length, contentType, null);
         responseBody(dos, body);
     }
 
     private void handleSignup(BufferedReader br, DataOutputStream dos) throws IOException {
-        //                 요구사항 2
-//                String queryString = url.split("\\?")[1];
+//        // 요구사항2
+//        String queryString = url.split("\\?")[1];
 //
-//                String[] params = queryString.split("&");
+//        User user = getUser(queryString);
+//        MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
+//        memoryUserRepository.addUser(user);
+//        log.log(Level.INFO, () -> String.format("회원가입 완료: %s", userId));
 //
-//                String userId = params[0].split("=")[1];
-//                String password = params[1].split("=")[1];
-//                String name = params[2].split("=")[1];
-//                String email = params[3].split("=")[1];
-//
-//                User user = new User(userId, password, name, email);
-//                MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
-//                memoryUserRepository.addUser(user);
-//                log.log(Level.INFO, () -> String.format("회원가입 완료: %s", userId));
-//
-//                response302Header(dos, "/index.html");
+//        response302Header(dos, INDEX);
 
         // 요구사항 3
+        int contentLength = getContentLength(br, ": ");
+        String body = IOUtils.readData(br, contentLength);
+        log.log(Level.INFO, () -> String.format("Body: %s", body));
+
+        User user = getUser(body);
+        MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
+        memoryUserRepository.addUser(user);
+
+        response302Header(dos, INDEX);
+    }
+
+    private static User getUser(String query) {
+        String[] params = query.split("&");
+        String userId = params[0].split("=")[1];
+        String password = params[1].split("=")[1];
+        String name = params[2].split("=")[1];
+        String email = params[3].split("=")[1];
+
+        return new User(userId, password, name, email);
+    }
+
+    private static int getContentLength(BufferedReader br, String regex) throws IOException {
         int contentLength = 0;
         while (true) {
             String line = br.readLine();
@@ -86,30 +120,20 @@ public class RequestHandler implements Runnable {
                 break;
             }
             if (line.startsWith("Content-Length")) {
-                contentLength = Integer.parseInt(line.split(": ")[1]);
+                contentLength = Integer.parseInt(line.split(regex)[1]);
             }
         }
-        String body = IOUtils.readData(br, contentLength);
-        log.log(Level.INFO, () -> String.format("Body: %s", body));
-
-        String[] params = body.split("&");
-        String userId = params[0].split("=")[1];
-        String password = params[1].split("=")[1];
-        String name = params[2].split("=")[1];
-        String email = params[3].split("=")[1];
-
-        User user = new User(userId, password, name, email);
-        MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
-        memoryUserRepository.addUser(user);
-
-        response302Header(dos, "/index.html");
+        return contentLength;
     }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType) {
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType, String cookie) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: " + contentType + "\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            if (cookie != null && !cookie.isEmpty()) {
+                dos.writeBytes(cookie + "\r\n");
+            }
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
