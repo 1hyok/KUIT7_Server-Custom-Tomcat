@@ -4,6 +4,7 @@ import db.MemoryUserRepository;
 import http.enums.HttpHeader;
 import http.enums.HttpStatus;
 import http.enums.MimeType;
+import http.routing.Route;
 import http.util.IOUtils;
 import model.User;
 
@@ -38,17 +39,14 @@ public class RequestHandler implements Runnable {
 
             String url = requestLine.split(" ")[1];
 
-            switch (url) {
-                case "/user/signup" -> {
-                    log.log(Level.INFO, "handleSignup");
-                    handleSignup(br, dos);
-                }
-                case "/user/login" -> {
-                    log.log(Level.INFO, "handleLogin");
-                    handleLogin(br, dos);
-                }
-                case "/user/userList" -> handleLoginList(br, dos);
-                default -> handleStaticFile(url, dos);
+            if (url.equals(Route.SIGNUP.getPath())) {
+                handleSignup(br, dos);
+            } else if (url.equals(Route.LOGIN.getPath())) {
+                handleLogin(br, dos);
+            } else if (url.equals(Route.USER_LIST.getPath())) {
+                handleLoginList(br, dos);
+            } else {
+                handleStaticFile(url, dos);
             }
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
@@ -70,7 +68,7 @@ public class RequestHandler implements Runnable {
             responseBody(dos, body);
             return;
         }
-        response302Header(dos, "/user/login.html", null);
+        response302Header(dos, Route.LOGIN_PAGE.getPath(), null);
     }
 
     private void handleLogin(BufferedReader br, DataOutputStream dos) throws IOException {
@@ -80,7 +78,7 @@ public class RequestHandler implements Runnable {
         String[] params = body.split("&");
         String[] userIdParam = params[0].split("=");
         if (userIdParam.length < 2) {
-            response302Header(dos, "/user/login_failed.html", null);
+            response302Header(dos, Route.LOGIN_FAILED.getPath(), null);
             return;
         }
         String userId = userIdParam[1];
@@ -92,7 +90,7 @@ public class RequestHandler implements Runnable {
             response302Header(dos, INDEX, HttpHeader.SET_COOKIE.getKey() + ": logined=true");
             return;
         }
-        response302Header(dos, "/user/login_failed.html", null);
+        response302Header(dos, Route.LOGIN_FAILED.getPath(), null);
     }
 
     private void handleStaticFile(String url, DataOutputStream dos) throws IOException {
