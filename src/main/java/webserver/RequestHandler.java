@@ -1,6 +1,7 @@
 package webserver;
 
 import db.MemoryUserRepository;
+import http.enums.HttpHeader;
 import http.enums.HttpStatus;
 import http.enums.MimeType;
 import http.util.IOUtils;
@@ -58,14 +59,14 @@ public class RequestHandler implements Runnable {
         boolean logined = false;
         String line = "";
         while ((line = br.readLine()) != null && !line.isEmpty()) {
-            if (line.contains("Cookie: logined=true")) {
+            if (line.contains(HttpHeader.COOKIE.getKey() + ": logined=true")) {
                 logined = true;
                 break;
             }
         }
         if (logined) {
             byte[] body = Files.readAllBytes(Paths.get("./webapp/user/list.html"));
-            response200Header(dos, body.length, "text/html;charset=utf-8");
+            response200Header(dos, body.length, MimeType.getContentType(".html"));
             responseBody(dos, body);
             return;
         }
@@ -88,7 +89,7 @@ public class RequestHandler implements Runnable {
         boolean isSignedUp = memoryUserRepository.isSignedUp(userId);
         log.log(Level.INFO, () -> String.format("isSignedUp: %s", isSignedUp));
         if (isSignedUp) {
-            response302Header(dos, INDEX, "Set-Cookie: logined=true");
+            response302Header(dos, INDEX, HttpHeader.SET_COOKIE.getKey() + ": logined=true");
             return;
         }
         response302Header(dos, "/user/login_failed.html", null);
@@ -149,7 +150,7 @@ public class RequestHandler implements Runnable {
             if (line.isEmpty()) {
                 break;
             }
-            if (line.startsWith("Content-Length")) {
+            if (line.startsWith(HttpHeader.CONTENT_LENGTH.getKey())) {
                 contentLength = Integer.parseInt(line.split(": ")[1]);
             }
         }
@@ -159,9 +160,9 @@ public class RequestHandler implements Runnable {
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType) {
         try {
             HttpStatus httpStatus = HttpStatus.OK;
-            dos.writeBytes("HTTP/1.1 " + httpStatus.getCode() + httpStatus.getMessage() + " OK \r\n");
-            dos.writeBytes("Content-Type: " + contentType + "\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("HTTP/1.1 " + httpStatus.getCode() + " " + httpStatus.getMessage() + " \r\n");
+            dos.writeBytes(HttpHeader.CONTENT_TYPE.getKey() + ": " + contentType + "\r\n");
+            dos.writeBytes(HttpHeader.CONTENT_LENGTH.getKey() + ": " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
@@ -170,9 +171,9 @@ public class RequestHandler implements Runnable {
 
     private void response302Header(DataOutputStream dos, String path, String cookie) {
         try {
-            HttpStatus httpStatus = HttpStatus.OK;
+            HttpStatus httpStatus = HttpStatus.FOUND;
             dos.writeBytes("HTTP/1.1 " + httpStatus.getCode() + " " + httpStatus.getMessage() + " \r\n");
-            dos.writeBytes("Location: " + path + "\r\n");
+            dos.writeBytes(HttpHeader.LOCATION.getKey() + ": " + path + "\r\n");
             if (cookie != null && !cookie.isEmpty()) {
                 dos.writeBytes(cookie + "\r\n");
             }
