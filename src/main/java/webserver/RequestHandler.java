@@ -34,9 +34,11 @@ public class RequestHandler implements Runnable {
 
             String url = requestLine.split(" ")[1];
 
-            if (url.startsWith("/user/signup")) {
+            if (url.equals("/user/signup")) {
+                log.log(Level.INFO, "handleSignup");
                 handleSignup(br, dos);
-            } else if (url.startsWith("/user/login")) {
+            } else if (url.equals("/user/login")) {
+                log.log(Level.INFO, "handleLogin");
                 handleLogin(br, dos);
             } else {
                 handleStaticFile(url, dos);
@@ -47,19 +49,27 @@ public class RequestHandler implements Runnable {
     }
 
     private void handleLogin(BufferedReader br, DataOutputStream dos) throws IOException {
+
         int contentLength = getContentLength(br, ": ");
         String body = IOUtils.readData(br, contentLength);
         log.log(Level.INFO, () -> String.format("Body: %s", body));
 
-        User user = getUser(body);
-        String userId = user.getUserId();
+        String[] params = body.split("&");
+        String[] userIdParam = params[0].split("=");
+        if (userIdParam.length < 2) {
+            response302Header(dos, "/user/login_failed.html");
+            return;
+        }
+        String userId = userIdParam[1];
+
         MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
         boolean isSignedUp = memoryUserRepository.isSignedUp(userId);
+        log.log(Level.INFO, () -> String.format("isSignedUp: %s", isSignedUp));
         if (isSignedUp) {
             response302Header(dos, INDEX);
             return;
         }
-        response302Header(dos, "/logined_failed.html");
+        response302Header(dos, "/user/login_failed.html");
     }
 
     private void handleStaticFile(String url, DataOutputStream dos) throws IOException {
