@@ -34,30 +34,49 @@ public class RequestHandler implements Runnable {
 
             String url = requestLine.split(" ")[1];
 
-            if (url.equals("/user/signup")) {
-                log.log(Level.INFO, "handleSignup");
-                handleSignup(br, dos);
-            } else if (url.equals("/user/login")) {
-                log.log(Level.INFO, "handleLogin");
-                handleLogin(br, dos);
-            } else {
-                handleStaticFile(url, dos);
+            switch (url) {
+                case "/user/signup" -> {
+                    log.log(Level.INFO, "handleSignup");
+                    handleSignup(br, dos);
+                }
+                case "/user/login" -> {
+                    log.log(Level.INFO, "handleLogin");
+                    handleLogin(br, dos);
+                }
+                case "/user/userList" -> handleLoginList(br, dos);
+                default -> handleStaticFile(url, dos);
             }
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         }
     }
 
+    private void handleLoginList(BufferedReader br, DataOutputStream dos) throws IOException {
+        boolean logined = false;
+        String line = "";
+        while ((line = br.readLine()) != null && !line.isEmpty()) {
+            if (line.contains("Cookie: logined=true")) {
+                logined = true;
+                break;
+            }
+        }
+        if (logined) {
+            byte[] body = Files.readAllBytes(Paths.get("./webapp/user/list.html"));
+            response200Header(dos, body.length, "text/html;charset=utf-8");
+            responseBody(dos, body);
+            return;
+        }
+        response302Header(dos, "/user/login.html", null);
+    }
+
     private void handleLogin(BufferedReader br, DataOutputStream dos) throws IOException {
 
-        int contentLength = getContentLength(br, ": ");
-        String body = IOUtils.readData(br, contentLength);
-        log.log(Level.INFO, () -> String.format("Body: %s", body));
+        String body = getRequestBody(br);
 
         String[] params = body.split("&");
         String[] userIdParam = params[0].split("=");
         if (userIdParam.length < 2) {
-            response302Header(dos, "/user/login_failed.html");
+            response302Header(dos, "/user/login_failed.html", null);
             return;
         }
         String userId = userIdParam[1];
@@ -66,10 +85,10 @@ public class RequestHandler implements Runnable {
         boolean isSignedUp = memoryUserRepository.isSignedUp(userId);
         log.log(Level.INFO, () -> String.format("isSignedUp: %s", isSignedUp));
         if (isSignedUp) {
-            response302Header(dos, INDEX);
+            response302Header(dos, INDEX, "Set-Cookie: logined=true");
             return;
         }
-        response302Header(dos, "/user/login_failed.html");
+        response302Header(dos, "/user/login_failed.html", null);
     }
 
     private void handleStaticFile(String url, DataOutputStream dos) throws IOException {
@@ -85,7 +104,7 @@ public class RequestHandler implements Runnable {
         if (url.endsWith(".png")) contentType = "image/png";
         if (url.endsWith(".jpeg")) contentType = "image/jpeg";
 
-        response200Header(dos, body.length, contentType, null);
+        response200Header(dos, body.length, contentType);
         responseBody(dos, body);
     }
 
@@ -101,15 +120,20 @@ public class RequestHandler implements Runnable {
 //        response302Header(dos, INDEX);
 
         // 요구사항 3
-        int contentLength = getContentLength(br, ": ");
-        String body = IOUtils.readData(br, contentLength);
-        log.log(Level.INFO, () -> String.format("Body: %s", body));
+        String body = getRequestBody(br);
 
         User user = getUser(body);
         MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
         memoryUserRepository.addUser(user);
 
-        response302Header(dos, INDEX);
+        response302Header(dos, INDEX, null);
+    }
+
+    private static String getRequestBody(BufferedReader br) throws IOException {
+        int contentLength = getContentLength(br);
+        String body = IOUtils.readData(br, contentLength);
+        log.log(Level.INFO, () -> String.format("Body: %s", body));
+        return body;
     }
 
     private static User getUser(String query) {
@@ -122,7 +146,7 @@ public class RequestHandler implements Runnable {
         return new User(userId, password, name, email);
     }
 
-    private static int getContentLength(BufferedReader br, String regex) throws IOException {
+    private static int getContentLength(BufferedReader br) throws IOException {
         int contentLength = 0;
         while (true) {
             String line = br.readLine();
@@ -130,30 +154,30 @@ public class RequestHandler implements Runnable {
                 break;
             }
             if (line.startsWith("Content-Length")) {
-                contentLength = Integer.parseInt(line.split(regex)[1]);
+                contentLength = Integer.parseInt(line.split(": ")[1]);
             }
         }
         return contentLength;
     }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType, String cookie) {
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: " + contentType + "\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            if (cookie != null && !cookie.isEmpty()) {
-                dos.writeBytes(cookie + "\r\n");
-            }
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         }
     }
 
-    private void response302Header(DataOutputStream dos, String path) {
+    private void response302Header(DataOutputStream dos, String path, String cookie) {
         try {
             dos.writeBytes("HTTP/1.1 302 Found \r\n");
             dos.writeBytes("Location: " + path + "\r\n");
+            if (cookie != null && !cookie.isEmpty()) {
+                dos.writeBytes(cookie + "\r\n");
+            }
             dos.writeBytes("\r\n");
             dos.flush();
         } catch (IOException e) {
