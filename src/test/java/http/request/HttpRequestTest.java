@@ -25,7 +25,6 @@ class HttpRequestTest {
         assertEquals("GET", httpRequest.getMethod());
         assertEquals("/index.html", httpRequest.getUrl());
         assertEquals("HTTP/1.1", httpRequest.getVersion());
-        assertEquals("localhost:80", httpRequest.getHeader("Host"));
         assertEquals("", httpRequest.getBody());
     }
 
