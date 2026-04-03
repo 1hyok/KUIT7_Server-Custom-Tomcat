@@ -1,0 +1,6 @@
+POST /user/signup HTTP/1.1
+Host: localhost:80
+Connection: keep-alive
+Content-Length: 48
+
+userId=jw&password=password&name=1hyok&email=a@a
