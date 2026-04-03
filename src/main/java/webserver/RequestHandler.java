@@ -1,6 +1,8 @@
 package webserver;
 
 import db.MemoryUserRepository;
+import http.enums.HttpStatus;
+import http.enums.MimeType;
 import http.util.IOUtils;
 import model.User;
 
@@ -14,6 +16,7 @@ import java.util.logging.Logger;
 public class RequestHandler implements Runnable {
     Socket connection;
     private static final String INDEX = "/index.html";
+
     private static final Logger log = Logger.getLogger(RequestHandler.class.getName());
 
     public RequestHandler(Socket connection) {
@@ -97,14 +100,7 @@ public class RequestHandler implements Runnable {
         }
         byte[] body = Files.readAllBytes(Paths.get("./webapp" + url));
 
-
-        String contentType = "text/html;charset=utf-8";
-        if (url.endsWith(".css")) contentType = "text/css";
-        if (url.endsWith(".js")) contentType = "application/javascript";
-        if (url.endsWith(".png")) contentType = "image/png";
-        if (url.endsWith(".jpeg")) contentType = "image/jpeg";
-
-        response200Header(dos, body.length, contentType);
+        response200Header(dos, body.length, MimeType.getContentType(url));
         responseBody(dos, body);
     }
 
@@ -162,7 +158,8 @@ public class RequestHandler implements Runnable {
 
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType) {
         try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            HttpStatus httpStatus = HttpStatus.OK;
+            dos.writeBytes("HTTP/1.1 " + httpStatus.getCode() + httpStatus.getMessage() + " OK \r\n");
             dos.writeBytes("Content-Type: " + contentType + "\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
@@ -173,7 +170,8 @@ public class RequestHandler implements Runnable {
 
     private void response302Header(DataOutputStream dos, String path, String cookie) {
         try {
-            dos.writeBytes("HTTP/1.1 302 Found \r\n");
+            HttpStatus httpStatus = HttpStatus.OK;
+            dos.writeBytes("HTTP/1.1 " + httpStatus.getCode() + " " + httpStatus.getMessage() + " \r\n");
             dos.writeBytes("Location: " + path + "\r\n");
             if (cookie != null && !cookie.isEmpty()) {
                 dos.writeBytes(cookie + "\r\n");
