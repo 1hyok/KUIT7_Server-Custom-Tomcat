@@ -1,11 +1,13 @@
 package webserver;
 
 import db.MemoryUserRepository;
+import http.util.IOUtils;
 import model.User;
 
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,23 +34,35 @@ public class RequestHandler implements Runnable {
 
             log.log(Level.INFO, () -> String.format("Request: %s", finalUrl));
             if (url.startsWith("/user/signup")) {
-                String queryString = url.split("\\?")[1];
+//                String queryString = url.split("\\?")[1];
+//
+//                String[] params = queryString.split("&");
+//
+//                String userId = params[0].split("=")[1];
+//                String password = params[1].split("=")[1];
+//                String name = params[2].split("=")[1];
+//                String email = params[3].split("=")[1];
+//
+//                User user = new User(userId, password, name, email);
+//                MemoryUserRepository.getInstance().addUser(user);
+//                log.log(Level.INFO, () -> String.format("회원가입 완료: %s", userId));
+//
+//                response302Header(dos, "/index.html");
 
-                String[] params = queryString.split("&");
+                int contentLength = 0;
+                while (true) {
+                    String line = br.readLine();
+                    if (line.isEmpty()) {
+                        break;
+                    }
+                    if (line.startsWith("Content-Length")) {
+                        contentLength = Integer.parseInt(line.split(": ")[1]);
+                    }
+                }
+                String body = IOUtils.readData(br, contentLength);
+                log.log(Level.INFO, () -> String.format("Body: %s", body));
 
-                String userId = params[0].split("=")[1];
-                String password = params[1].split("=")[1];
-                String name = params[2].split("=")[1];
-                String email = params[3].split("=")[1];
-
-                User user = new User(userId, password, name, email);
-                MemoryUserRepository.getInstance().addUser(user);
-                log.log(Level.INFO, () -> String.format("회원가입 완료: %s", userId));
-
-//                byte[] body = Files.readAllBytes(Paths.get("./webapp/index.html"));
-//                response200Header(dos, body.length, "text/html;charset=utf-8");
-//                responseBody(dos, body);
-                response302Header(dos);
+                response302Header(dos, "/index.html");
             } else {
                 if (url.equals("/")) {
                     url = "/index.html";
@@ -81,10 +95,10 @@ public class RequestHandler implements Runnable {
         }
     }
 
-    private void response302Header(DataOutputStream dos) {
+    private void response302Header(DataOutputStream dos, String path) {
         try {
             dos.writeBytes("HTTP/1.1 302 Found \r\n");
-            dos.writeBytes("Location: /index.html\r\n");
+            dos.writeBytes(String.format("Location: %s\r%n", path));
             dos.writeBytes("\r\n");
             dos.flush();
         } catch (IOException e) {
