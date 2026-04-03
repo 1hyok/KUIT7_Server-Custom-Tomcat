@@ -31,7 +31,7 @@ public class RequestHandler implements Runnable {
             String finalUrl = url;
 
             log.log(Level.INFO, () -> String.format("Request: %s", finalUrl));
-            if (url.startsWith("user/signup")) {
+            if (url.startsWith("/user/signup")) {
                 String queryString = url.split("\\?")[1];
 
                 String[] params = queryString.split("&");
@@ -43,11 +43,12 @@ public class RequestHandler implements Runnable {
 
                 User user = new User(userId, password, name, email);
                 MemoryUserRepository.getInstance().addUser(user);
-                log.log(Level.INFO, () -> String.format("회원가임 완료: %s", userId));
+                log.log(Level.INFO, () -> String.format("회원가입 완료: %s", userId));
 
-                byte[] body = Files.readAllBytes(Paths.get("./webapp" + url));
-                response200Header(dos, body.length, "text/html;charset=utf-8");
-                responseBody(dos, body);
+//                byte[] body = Files.readAllBytes(Paths.get("./webapp/index.html"));
+//                response200Header(dos, body.length, "text/html;charset=utf-8");
+//                responseBody(dos, body);
+                response302Header(dos);
             } else {
                 if (url.equals("/")) {
                     url = "/index.html";
@@ -75,6 +76,17 @@ public class RequestHandler implements Runnable {
             dos.writeBytes("Content-Type: " + contentType + "\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.log(Level.SEVERE, e.getMessage());
+        }
+    }
+
+    private void response302Header(DataOutputStream dos) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 Found \r\n");
+            dos.writeBytes("Location: /index.html\r\n");
+            dos.writeBytes("\r\n");
+            dos.flush();
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         }
