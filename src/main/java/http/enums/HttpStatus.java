@@ -1,5 +1,6 @@
 package http.enums;
 
+// HTTP 상태 코드와 메시지를 매핑한 enum
 public enum HttpStatus {
     OK(200, "OK"),
     FOUND(302, "Found"),

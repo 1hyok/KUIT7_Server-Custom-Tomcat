@@ -2,6 +2,8 @@ package model;
 
 import java.util.Objects;
 
+// 회원가입 / 로그인에서 사용되는 사용자 도메인 객체.
+// equals/hashCode 는 모든 필드 기반 — 동일성 비교 시 userId 외에도 password 등이 같아야 한다.
 public class User {
     private String userId;
     private String password;

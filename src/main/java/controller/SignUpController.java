@@ -1,24 +1,30 @@
 package controller;
 
 import db.MemoryUserRepository;
+import http.enums.UserQueryKey;
 import http.request.HttpRequest;
 import http.response.HttpResponse;
+import http.util.HttpRequestUtils;
 import model.User;
+
+import java.util.Map;
 
 public class SignUpController implements Controller {
     @Override
     public void execute(HttpRequest httpRequest, HttpResponse httpResponse) {
-        String body = httpRequest.getBody();
+        // 1) POST body 의 form-urlencoded 데이터를 Map 으로 파싱
+        Map<String, String> params = HttpRequestUtils.parseQueryParameter(httpRequest.getBody());
 
-        String[] params = body.split("&");
-        String userId = params[0].split("=")[1];
-        String password = params[1].split("=")[1];
-        String name = params[2].split("=")[1];
-        String email = params[3].split("=")[1];
-
-        User user = new User(userId, password, name, email);
+        // 2) User 인스턴스 생성 후 MemoryUserRepository 에 저장
+        User user = new User(
+                params.get(UserQueryKey.USER_ID.getKey()),
+                params.get(UserQueryKey.PASSWORD.getKey()),
+                params.get(UserQueryKey.NAME.getKey()),
+                params.get(UserQueryKey.EMAIL.getKey())
+        );
         MemoryUserRepository.getInstance().addUser(user);
 
+        // 3) 회원가입 완료 후 index 페이지로 redirect (302)
         httpResponse.redirect("/index.html");
     }
 }

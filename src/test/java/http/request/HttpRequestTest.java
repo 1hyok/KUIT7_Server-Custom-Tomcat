@@ -1,5 +1,6 @@
 package http.request;
 
+import http.enums.HttpMethod;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -22,7 +23,8 @@ class HttpRequestTest {
     void GET_요청_파싱() throws IOException {
         HttpRequest httpRequest = HttpRequest.from(bufferedReaderFromFile(TEST_DIRECTORY + "http_get_request.txt"));
 
-        assertEquals("GET", httpRequest.getMethod());
+        assertNotNull(httpRequest);
+        assertEquals(HttpMethod.GET, httpRequest.getMethod());
         assertEquals("/index.html", httpRequest.getUrl());
         assertEquals("HTTP/1.1", httpRequest.getVersion());
         assertEquals("", httpRequest.getBody());
@@ -32,7 +34,8 @@ class HttpRequestTest {
     void POST_요청_파싱() throws IOException {
         HttpRequest httpRequest = HttpRequest.from(bufferedReaderFromFile(TEST_DIRECTORY + "http_post_request.txt"));
 
-        assertEquals("POST", httpRequest.getMethod());
+        assertNotNull(httpRequest);
+        assertEquals(HttpMethod.POST, httpRequest.getMethod());
         assertEquals("/user/signup", httpRequest.getUrl());
         assertEquals("HTTP/1.1", httpRequest.getVersion());
         assertEquals("48", httpRequest.getHeader("Content-Length"));
@@ -43,7 +46,8 @@ class HttpRequestTest {
     void Cookie_파싱() throws IOException {
         HttpRequest httpRequest = HttpRequest.from(bufferedReaderFromFile(TEST_DIRECTORY + "http_cookie_request.txt"));
 
-        assertEquals("GET", httpRequest.getMethod());
+        assertNotNull(httpRequest);
+        assertEquals(HttpMethod.GET, httpRequest.getMethod());
         assertEquals("/user/userList", httpRequest.getUrl());
         assertTrue(httpRequest.getCookie().contains("logined=true"));
     }

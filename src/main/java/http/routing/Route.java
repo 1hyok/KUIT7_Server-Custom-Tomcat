@@ -1,5 +1,6 @@
 package http.routing;
 
+// 애플리케이션에서 사용하는 URL 경로를 한 곳에서 관리하는 enum
 public enum Route {
     SIGNUP("/user/signup"),
     LOGIN("/user/login"),
